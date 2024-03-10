@@ -1,13 +1,12 @@
-import { UrlItem } from '@/components/UrlItem';
+// import { UrlItem } from '@/components/UrlItem';
 import Switch from 'react-switch';
 import { useState } from 'react';
-import useUrls from '@/lib/hooks/useUrls';
+// import useTabs from '@/lib/hooks/useTabs.ts';
 
 function Popup() {
   const [isTurnedOff, setIsTurnedOff] = useState(false);
-  const [urlToAdd, setUrlToAdd] = useState('');
 
-  const { urls, addUrl } = useUrls();
+  // const { urls } = useTabs();
 
   return (
     <div className="w-[100%] px-[15px] pb-[20px]">
@@ -23,27 +22,13 @@ function Popup() {
           onColor="#66CC99"
         />
       </header>
-      <ul className="flex flex-col gap-[20px]">
-        { urls.map((url) => {
-          return (
-            <UrlItem key={url.url} url={url.url} delay={url.delay} />
-          );
-        })}
-        <li className="flex items-stretch justify-between">
-          <input
-            type="text"
-            className="px-[15px] py-[5px] bg-primary-700 rounded-[7px] text-[16px] text-primary-200 font-semibold"
-            value={urlToAdd}
-            onChange={(evt) => setUrlToAdd(evt.target.value)}
-          />
-          <button
-            className="px-[15px] bg-primary-400 rounded-[7px] text-primary-100 font-semibold"
-            onClick={() => addUrl({ url: urlToAdd, delay: 100000 })}
-          >
-            Add
-          </button>
-        </li>
-      </ul>
+      {/*<ul className="flex flex-col gap````-[20px]">*/}
+      {/*  { urls.map((url) => {*/}
+      {/*    return (*/}
+      {/*      <UrlItem key={url.url} url={url.url} delay={url.delay} />*/}
+      {/*    );*/}
+      {/*  })}*/}
+      {/*</ul>*/}
     </div>
   );
 }

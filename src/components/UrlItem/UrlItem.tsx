@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { CountdownRenderer } from '@/components/CountdownRenderer';
 import Countdown, { type CountdownApi } from 'react-countdown';
-import { type UrlItemDTO } from '@/lib/hooks/useUrls';
 import PauseIcon from '@/assets/pause-icon.svg?react';
 import PlayIcon from '@/assets/play-icon.svg?react';
 import XMarkIcon from '@/assets/x-mark-icon.svg?react';
 
-function UrlItem(props: UrlItemDTO) {
+function UrlItem(props: any) {
   const { url, delay } = props; 
 
   const [isPaused, setIsPaused] = useState(false);
