@@ -1,12 +1,17 @@
-// import { UrlItem } from '@/components/UrlItem';
+import { TabItem } from '@/components/TabItem';
 import Switch from 'react-switch';
 import { useState } from 'react';
-// import useTabs from '@/lib/hooks/useTabs.ts';
+import useTabs from '@/lib/hooks/useTabs.ts';
+import { type StorageTabScheme } from '@/background/storage.ts';
 
 function Popup() {
   const [isTurnedOff, setIsTurnedOff] = useState(false);
 
-  // const { urls } = useTabs();
+  const { tabs } = useTabs();
+  
+  function asArray<R = unknown>(obj: Record<string, unknown>): R {
+    return Object.keys(obj).map((key) => obj[key]) as R;
+  }
 
   return (
     <div className="w-[100%] px-[15px] pb-[20px]">
@@ -22,13 +27,13 @@ function Popup() {
           onColor="#66CC99"
         />
       </header>
-      {/*<ul className="flex flex-col gap````-[20px]">*/}
-      {/*  { urls.map((url) => {*/}
-      {/*    return (*/}
-      {/*      <UrlItem key={url.url} url={url.url} delay={url.delay} />*/}
-      {/*    );*/}
-      {/*  })}*/}
-      {/*</ul>*/}
+      <ul className="flex flex-col gap-[20px]">
+        { asArray<StorageTabScheme[]>(tabs)?.map((tab) => {
+          return (
+            <TabItem tab={tab.tab} timeout={tab.timeout} />
+          );
+        })}
+      </ul>
     </div>
   );
 }

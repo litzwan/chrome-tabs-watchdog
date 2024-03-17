@@ -5,12 +5,17 @@ import PauseIcon from '@/assets/pause-icon.svg?react';
 import PlayIcon from '@/assets/play-icon.svg?react';
 import XMarkIcon from '@/assets/x-mark-icon.svg?react';
 
-function UrlItem(props: any) {
-  const { url, delay } = props; 
+interface TabItemProps {
+  tab: chrome.tabs.Tab;
+  timeout: number;
+}
+
+function TabItem(props: TabItemProps) {
+  const { tab, timeout } = props; 
 
   const [isPaused, setIsPaused] = useState(false);
   const [countdownApi, setCountdownApi] = useState<CountdownApi | null>(null);
-  const [countdownDate, _setCountdownDate] = useState(Date.now() + delay);
+  const [countdownDate, _setCountdownDate] = useState(Date.now() + timeout);
 
   const pauseButtonIcon = () => {
     return isPaused ? <PlayIcon className="fill-primary-200 w-[25px]" /> : <PauseIcon className="fill-primary-200 w-[25px]" />;
@@ -48,7 +53,7 @@ function UrlItem(props: any) {
             className={`absolute w-[5px] h-[5px] left-[13px] rounded-full top-[50%] translate-y-[-50%] ${pauseColor()}`}
           ></span>
           <p className="text-[16px] text-primary-200 font-semibold whitespace-nowrap pl-[15px] w-[100%] overflow-ellipsis overflow-hidden">
-            { url }
+            { tab.url }
           </p>
         </div>
         <Countdown
@@ -72,4 +77,4 @@ function UrlItem(props: any) {
 
 
 
-export default UrlItem;
+export default TabItem;

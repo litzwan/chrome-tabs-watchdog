@@ -1,24 +1,16 @@
-import { MessageStatus, TABS_STORAGE_KEY } from '@/lib/consts.ts';
-import { StorageTabScheme, StorageTabsDictionary} from '@/lib/types.ts';
-import {
-  IDLE_TAB_TIMEOUT,
-  TICK_IN_MILLISECONDS,
-  TICK_IN_MINUTES,
-  DELAY_IN_MINUTES,
-} from './const.ts';
+import { MessageStatus } from '@/lib/messageStatus.ts';
+import { TICK_IN_MILLISECONDS } from './const.ts';
 import Storage from './storage.ts';
+import Alarm from './alarm.ts';
 
 const storage = new Storage();
+const alarm = new Alarm();
 
 let domIsReady = false;
 let activeTabs: Record<string, chrome.tabs.Tab> = {};
 
 function sendTabsAreReadyMessage() {
   void chrome.runtime.sendMessage({ status: MessageStatus.TABS_ARE_READY });
-}
-
-async function getTabsFromStorage() {
-  return (await chrome.storage.local.get(TABS_STORAGE_KEY))?.[TABS_STORAGE_KEY] as StorageTabsDictionary;
 }
 
 async function getActiveTabs() {
@@ -33,7 +25,7 @@ async function getActiveTabs() {
 }
 
 void storage.clear();
-void chrome.alarms.clearAll();
+void alarm.clear();
 
 chrome.runtime.onMessage.addListener((message, _sender) => {
   console.log('background', message);
@@ -49,17 +41,7 @@ chrome.tabs.query({}, async (tabs) => {
   }
   
   await storage.init(...tabs);
-  
-  for (const tab of tabs) {
-    const tabId = String(tab.id as number);
-    const tabAlarmCreated = await chrome.alarms.get(tabId);
-    
-    if (tabAlarmCreated) {
-      return;
-    }
-    
-    await chrome.alarms.create(tabId, { delayInMinutes: DELAY_IN_MINUTES, periodInMinutes: TICK_IN_MINUTES });
-  }
+  await alarm.init(...tabs);
   
   activeTabs = await getActiveTabs();
 
@@ -78,28 +60,24 @@ chrome.tabs.query({}, async (tabs) => {
 
 chrome.tabs.onCreated.addListener(async (tab) => {
   const tabId = String(tab.id as number);
-  
+
   await storage.save(tab);
-  await chrome.alarms.create(tabId, { delayInMinutes: DELAY_IN_MINUTES, periodInMinutes: TICK_IN_MINUTES });
+  await alarm.create(tabId);
+  
+  await chrome.runtime.sendMessage({ status: MessageStatus.UPDATE_TABS });
 });
 
 chrome.tabs.onActivated.addListener(async(activeInfo) => {
   activeTabs = await getActiveTabs();
-  
-  const tabs = storage.getTabs;
-  const tabId = String(activeInfo.tabId);
-  
-  if (!tabs[tabId]) {
-    return;
-  }
-  
+
   await storage.reset(activeInfo.tabId);
-  await chrome.alarms.clear(tabId);
-  await chrome.alarms.create(tabId, { delayInMinutes: DELAY_IN_MINUTES, periodInMinutes: TICK_IN_MINUTES });
+  await alarm.update(activeInfo.tabId);
+
+  await chrome.runtime.sendMessage({ status: MessageStatus.UPDATE_TABS });
 });
 
-chrome.alarms.onAlarm.addListener(async (alarm) => {
-  const tab = storage.resolve(alarm.name);
+chrome.alarms.onAlarm.addListener(async (a) => {
+  const tab = storage.resolve(a.name);
 
   if (!tab) {
     return;
@@ -108,7 +86,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   tab.timeout = tab.timeout - TICK_IN_MILLISECONDS;
   console.log(tab, 'tabItem Alarm');
   await storage.update(tab);
-  
+
   if (tab.tab.url === 'chrome://extensions/') {
     return;
   }
@@ -116,10 +94,10 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (tab.timeout <= 0) {
     await chrome.tabs.remove(tab.tab.id as number);
     await storage.remove(tab.tab.id);
-    await chrome.alarms.clear(alarm.name);
+    await alarm.remove(a.name);
   }
 });
 
-chrome.storage.onChanged.addListener((changes) => {
+chrome.storage.onChanged.addListener((_changes) => {
   // console.log(changes, 'Message here to UI');
 });

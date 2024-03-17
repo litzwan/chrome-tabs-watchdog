@@ -1,3 +1,4 @@
+import { type TabId } from '@/lib/types.ts';
 import { IDLE_TAB_TIMEOUT, TABS_STORAGE_KEY } from './const.ts';
 
 export interface StorageTabScheme {
@@ -6,7 +7,6 @@ export interface StorageTabScheme {
 }
 
 export type StorageTabsDictionary = Record<string, StorageTabScheme>;
-export type TabId = undefined | string | number;
 
 class Storage {
   protected tabs: StorageTabsDictionary = {};
@@ -63,7 +63,7 @@ class Storage {
   }
   
   async sync() {
-    this.tabs = await chrome.storage.local.get(TABS_STORAGE_KEY) as StorageTabsDictionary;
+    this.tabs = (await chrome.storage.local.get(TABS_STORAGE_KEY))[TABS_STORAGE_KEY] as StorageTabsDictionary;
   }
   
   async clear() {
