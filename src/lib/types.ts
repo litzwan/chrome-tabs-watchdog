@@ -1,6 +1,6 @@
 export interface StorageTabScheme {
   tab: chrome.tabs.Tab;
-  timout: number;
+  timeout: number;
 }
 
 export type StorageTabsDictionary = Record<string, StorageTabScheme>;

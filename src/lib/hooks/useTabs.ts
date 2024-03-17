@@ -9,7 +9,7 @@ function useTabs() {
     void chrome.runtime.sendMessage({ status: MessageStatus.DOM_IS_READY });
     
     chrome.runtime.onMessage.addListener((message) => {
-      console.log(message);
+      console.log('popup', message);
     });
   }, []);
 }
