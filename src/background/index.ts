@@ -1,58 +1,70 @@
 import { MessageStatus } from '@/lib/messageStatus.ts';
-import { TICK_IN_MILLISECONDS } from './const.ts';
-import Storage from './storage.ts';
-import Alarm from './alarm.ts';
+import {IDLE_TAB_TIMEOUT, TICK_IN_MILLISECONDS} from './const.ts';
+import TabsStorage from './tabsStorage.ts';
+import TabsAlarm from './tabsAlarm.ts';
 
-const storage = new Storage();
-const alarm = new Alarm();
+const tabsStorage = new TabsStorage();
+const tabsAlarm = new TabsAlarm();
 
+const activeTabs: Record<string, chrome.tabs.Tab> = {};
 let domIsReady = false;
-let activeTabs: Record<string, chrome.tabs.Tab> = {};
 
-function sendTabsAreReadyMessage() {
-  void chrome.runtime.sendMessage({ status: MessageStatus.TABS_ARE_READY });
+async function sendMessageToPopup(message: Record<string, unknown>) {
+  if (!domIsReady) {
+    return;
+  }
+  
+  await chrome.runtime.sendMessage(message);
 }
 
-async function getActiveTabs() {
+async function queryActiveTabs() {
   return new Promise<Record<string, chrome.tabs.Tab>>((resolve) => {
     chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
       tabs.forEach((tab) => {
         activeTabs[tab.id as number] = tab;
       });
+      console.log(activeTabs, 'activeTabs');
       resolve(activeTabs);
     });
   });
 }
 
-void storage.clear();
-void alarm.clear();
-
-chrome.runtime.onMessage.addListener((message, _sender) => {
-  console.log('background', message);
-
-  if (message?.status === MessageStatus.DOM_IS_READY) {
-    domIsReady = true;
+async function pauseActiveTabs() {
+  for (const [tabId, tab] of Object.entries(activeTabs)) { 
+    await tabsStorage.update({ tab, isPaused: true, timeout: IDLE_TAB_TIMEOUT });
+    await tabsAlarm.remove(tabId);
   }
-});
+}
+
+async function unpauseActiveTabs() {
+  for (const [tabId, tab] of Object.entries(activeTabs)) {
+    await tabsStorage.update({ tab, isPaused: false, timeout: IDLE_TAB_TIMEOUT });
+    await tabsAlarm.create(tabId);
+  }
+}
+
+void tabsStorage.clear();
+void tabsAlarm.clear();
 
 chrome.tabs.query({}, async (tabs) => {
   if (!tabs) {
     return;
   }
   
-  await storage.init(...tabs);
-  await alarm.init(...tabs);
+  await tabsStorage.init(...tabs);
+  await tabsAlarm.init(...tabs);
   
-  activeTabs = await getActiveTabs();
+  await queryActiveTabs();
+  await pauseActiveTabs();
 
   if (domIsReady) {
-    sendTabsAreReadyMessage();
+    await sendMessageToPopup({ status: MessageStatus.TABS_ARE_READY });
     return;
   }
 
   const interval = setInterval(() => {
     if (domIsReady) {
-      sendTabsAreReadyMessage();
+      void sendMessageToPopup({ status: MessageStatus.TABS_ARE_READY });
       clearInterval(interval);
     }
   }, 100);
@@ -61,31 +73,32 @@ chrome.tabs.query({}, async (tabs) => {
 chrome.tabs.onCreated.addListener(async (tab) => {
   const tabId = String(tab.id as number);
 
-  await storage.save(tab);
-  await alarm.create(tabId);
-  
-  await chrome.runtime.sendMessage({ status: MessageStatus.UPDATE_TABS });
+  await tabsStorage.save(tab);
+  await tabsAlarm.create(tabId);
 });
 
 chrome.tabs.onActivated.addListener(async(activeInfo) => {
-  activeTabs = await getActiveTabs();
+  console.log('onActivated', activeInfo);
+  await unpauseActiveTabs();
+  await queryActiveTabs();
+  await pauseActiveTabs();
 
-  await storage.reset(activeInfo.tabId);
-  await alarm.update(activeInfo.tabId);
+  await tabsStorage.reset(activeInfo.tabId);
+  await tabsAlarm.recreate(activeInfo.tabId);
 
-  await chrome.runtime.sendMessage({ status: MessageStatus.UPDATE_TABS });
+  await sendMessageToPopup({ status: MessageStatus.UPDATE_TABS });
 });
 
 chrome.alarms.onAlarm.addListener(async (a) => {
-  const tab = storage.resolve(a.name);
+  const tab = tabsStorage.resolve(a.name);
 
   if (!tab) {
     return;
   }
 
   tab.timeout = tab.timeout - TICK_IN_MILLISECONDS;
-  console.log(tab, 'tabItem Alarm');
-  await storage.update(tab);
+  console.log(tab, 'alarm tick');
+  await tabsStorage.update(tab);
 
   if (tab.tab.url === 'chrome://extensions/') {
     return;
@@ -93,11 +106,31 @@ chrome.alarms.onAlarm.addListener(async (a) => {
 
   if (tab.timeout <= 0) {
     await chrome.tabs.remove(tab.tab.id as number);
-    await storage.remove(tab.tab.id);
-    await alarm.remove(a.name);
+    await tabsStorage.remove(tab.tab.id);
+    await tabsAlarm.remove(a.name);
   }
 });
 
-chrome.storage.onChanged.addListener((_changes) => {
-  // console.log(changes, 'Message here to UI');
+chrome.runtime.onConnect.addListener((port) => {
+  port.onDisconnect.addListener(() => {
+    domIsReady = false;
+  });
+});
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  console.log('background', message);
+
+  switch (message?.status) {
+    case MessageStatus.DOM_IS_READY:
+      domIsReady = true;
+      break;
+    case MessageStatus.DOM_WAS_DESTROYED:
+      domIsReady = false;
+      break;
+    case MessageStatus.TABS_STATUS_REQUEST:
+      sendResponse({ status: MessageStatus.TABS_ARE_READY });
+      break;
+    default:
+      break;
+  }
 });

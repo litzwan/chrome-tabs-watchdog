@@ -4,7 +4,7 @@ import {
   DELAY_IN_MINUTES,
 } from './const.ts';
 
-class Alarm {
+class TabsAlarm {
   
   async init(...tabs: chrome.tabs.Tab[]) {
     for (const tab of tabs) {
@@ -20,7 +20,7 @@ class Alarm {
     await chrome.alarms.create(String(tabId), { delayInMinutes: DELAY_IN_MINUTES, periodInMinutes: TICK_IN_MINUTES });
   }
   
-  async update(tabId: TabId) {
+  async recreate(tabId: TabId) {
     if (!tabId) {
       return;
     }
@@ -42,4 +42,4 @@ class Alarm {
   }
 }
 
-export default Alarm;
+export default TabsAlarm;

@@ -3,12 +3,13 @@ import { IDLE_TAB_TIMEOUT, TABS_STORAGE_KEY } from './const.ts';
 
 export interface StorageTabScheme {
   tab: chrome.tabs.Tab;
+  isPaused: boolean;
   timeout: number;
 }
 
 export type StorageTabsDictionary = Record<string, StorageTabScheme>;
 
-class Storage {
+class TabsStorage {
   protected tabs: StorageTabsDictionary = {};
   
   async init(...tabs: chrome.tabs.Tab[]) {
@@ -74,6 +75,7 @@ class Storage {
   factory(tab: chrome.tabs.Tab): StorageTabScheme {
     return {
       tab,
+      isPaused: false,
       timeout: IDLE_TAB_TIMEOUT,
     };
   }
@@ -83,4 +85,4 @@ class Storage {
   }
 }
 
-export default Storage;
+export default TabsStorage;

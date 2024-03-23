@@ -2,7 +2,7 @@ import { TabItem } from '@/components/TabItem';
 import Switch from 'react-switch';
 import { useState } from 'react';
 import useTabs from '@/lib/hooks/useTabs.ts';
-import { type StorageTabScheme } from '@/background/storage.ts';
+import { type StorageTabScheme } from '@/background/tabsStorage.ts';
 
 function Popup() {
   const [isTurnedOff, setIsTurnedOff] = useState(false);
@@ -30,7 +30,7 @@ function Popup() {
       <ul className="flex flex-col gap-[20px]">
         { asArray<StorageTabScheme[]>(tabs)?.map((tab) => {
           return (
-            <TabItem tab={tab.tab} timeout={tab.timeout} />
+            <TabItem tab={tab} timeout={tab.timeout} />
           );
         })}
       </ul>

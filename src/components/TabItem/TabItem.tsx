@@ -1,19 +1,20 @@
-import { useState } from 'react';
+import {useEffect, useState} from 'react';
 import { CountdownRenderer } from '@/components/CountdownRenderer';
 import Countdown, { type CountdownApi } from 'react-countdown';
 import PauseIcon from '@/assets/pause-icon.svg?react';
 import PlayIcon from '@/assets/play-icon.svg?react';
 import XMarkIcon from '@/assets/x-mark-icon.svg?react';
+import {StorageTabScheme} from '@/background/tabsStorage.ts';
 
 interface TabItemProps {
-  tab: chrome.tabs.Tab;
+  tab: StorageTabScheme;
   timeout: number;
 }
 
 function TabItem(props: TabItemProps) {
   const { tab, timeout } = props; 
 
-  const [isPaused, setIsPaused] = useState(false);
+  const [isPaused, setIsPaused] = useState(tab.isPaused);
   const [countdownApi, setCountdownApi] = useState<CountdownApi | null>(null);
   const [countdownDate, _setCountdownDate] = useState(Date.now() + timeout);
 
@@ -27,22 +28,23 @@ function TabItem(props: TabItemProps) {
 
   function togglePause() {
     setIsPaused((prevState) => !prevState);
-    setTimeout(() => {
-      if (!countdownApi) {
-        return;
-      }
-
-      if (isPaused) {
-        countdownApi.start();
-      } else {
-        countdownApi.pause();
-      }
-    });
   }
 
   function onPauseHandler() {
     setIsPaused(true);
   }
+  
+  useEffect(() => {
+    if (!countdownApi) {
+      return;
+    }
+
+    if (isPaused) {
+      countdownApi.pause();
+    } else {
+      countdownApi.start();
+    }
+  }, [isPaused, countdownApi]);
 
   return (
     <li className="relative flex items-stretch gap-[10px] px-[10px] py-[5px] pl-[15px] bg-primary-700 rounded-[7px] overflow-hidden">
@@ -53,7 +55,7 @@ function TabItem(props: TabItemProps) {
             className={`absolute w-[5px] h-[5px] left-[13px] rounded-full top-[50%] translate-y-[-50%] ${pauseColor()}`}
           ></span>
           <p className="text-[16px] text-primary-200 font-semibold whitespace-nowrap pl-[15px] w-[100%] overflow-ellipsis overflow-hidden">
-            { tab.url }
+            { tab.tab.url || tab.tab.pendingUrl }
           </p>
         </div>
         <Countdown
